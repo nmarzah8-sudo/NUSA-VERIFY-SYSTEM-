@@ -2,7 +2,7 @@
 /* Never place a service-role key or Supabase secret key in browser code. */
 window.NUSA_CONFIG = Object.freeze({
   SUPABASE_URL: "https://zywonapqvzamduhrgxdr.supabase.co",
-  SUPABASE_ANON_KEY: "YOUR_EXISTING_PUBLISHABLE_ANON_KEY",
+  SUPABASE_ANON_KEY: "sb_publishable_ULLUQfFl8PDZ46Gfrn4Xrw_BZP-VvLL ",
   PUBLIC_BASE_URL: "https://nmarzah8-sudo.github.io/NUSA-VERIFY-SYSTEM-",
   STATUSES: Object.freeze(["Active", "Inactive", "Graduated", "Revoked"]),
   POSITIONS: Object.freeze(["President", "Vice President", "Secretary General", "Treasurer", "Member"])
