@@ -17,7 +17,6 @@
     if (!url || !key) {
       throw new Error("Supabase configuration is invalid.");
     }
-
     client = window.supabase.createClient(url, key, {
       auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
     });
