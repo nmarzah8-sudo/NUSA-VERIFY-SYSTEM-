@@ -1,27 +1,27 @@
-(function () {
+((function () {
   let client;
-
   function getClient() {
     if (client) return client;
-    if (!window.supabase || typeof window.supabase.createClient !== "function") {
-      throw new Error("The verification service is temporarily unavailable.");
+    const supaGlobal = window.supabase;
+    if (!supaGlobal || typeof supaGlobal.createClient !== "function") {
+      console.error("supabase lib not loaded");
+      throw new Error("Sign-in is temporarily unavailable. Please try again.");
     }
-    // Use NUSA_CONFIG you already fixed
+    // Accept both names
     const cfg = window.NUSA_CONFIG || window.NusaConfig;
-    if (!cfg) {
-      throw new Error("The verification service is temporarily unavailable.");
-    }
-    const url = cfg.SUPABASE_URL || (cfg.supabaseCredentials && cfg.supabaseCredentials().url);
-    const key = cfg.SUPABASE_ANON_KEY || (cfg.supabaseCredentials && cfg.supabaseCredentials().key);
+    if (!cfg) throw new Error("Config not loaded");
 
-    if (!url || !key) {
+    const url = cfg.SUPABASE_URL;
+    const key = cfg.SUPABASE_ANON_KEY;
+
+    if (!url || !key || url.includes("...") ) {
       throw new Error("Supabase configuration is invalid.");
     }
-    client = window.supabase.createClient(url, key, {
-      auth: { autoRefreshToken: true, persistSession: true, detectSessionInUrl: true }
+
+    client = supaGlobal.createClient(url, key, {
+      auth: { persistSession: true, autoRefreshToken: true }
     });
     return client;
   }
-
-  window.NusaSupabase = Object.freeze({ getClient });
+  window.NusaSupabase = { getClient };
 })();
