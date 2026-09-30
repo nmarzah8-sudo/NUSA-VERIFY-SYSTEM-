@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171714">
+  <meta name="description" content="Public student identity verification for NUSA — AME Zion Chapter.">
+  <title>NUSA Verify | AME Zion Chapter</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/pwa.js"></script>
+</head>
+<body class="home-page">
+  <header class="site-header wrap">
+    <a class="wordmark" href="./" aria-label="NUSA Verify home">
+      <span class="brand-mark-slot" data-logo-slot aria-hidden="true"></span>
+      <span><strong>NUSA Verify</strong><small>AME Zion Chapter</small></span>
+    </a>
+    <a class="header-link" href="login.html">Administrator login <span aria-hidden="true">&#8599;</span></a>
+  </header>
+
+  <main>
+    <section class="home-hero wrap" aria-labelledby="home-title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> NUSA — AME Zion Chapter</p>
+        <h1 id="home-title">NUSA<br><span>Verify</span></h1>
+        <p class="hero-subtitle">Student Identity Verification System</p>
+        <p class="hero-description">A trusted way to confirm the identity and current standing of NUSA students.</p>
+        <a class="button button-gold" href="#verify-lookup">Verify a student <span aria-hidden="true">&#8594;</span></a>
+      </div>
+      <div class="hero-aside" aria-label="Verification service">
+        <div class="credential-preview" aria-hidden="true"><span>IDENTITY RECORD</span><div><i></i><i></i><i></i><b></b></div><small>NUSA VERIFY</small></div>
+        <p class="aside-kicker">PUBLIC RECORD CHECK</p>
+        <p>Verification is available to anyone with a student's unique QR link.</p>
+        <a href="login.html" class="text-link">Administrator access <span aria-hidden="true">&#8599;</span></a>
+      </div>
+    </section>
+
+    <section class="lookup-band" id="verify-lookup" aria-labelledby="lookup-title">
+      <div class="lookup-inner wrap">
+        <div>
+          <p class="eyebrow eyebrow-dark">STUDENT RECORD</p>
+          <h2 id="lookup-title">Verify a student</h2>
+          <p>Enter a verification link or UUID token from a NUSA student credential.</p>
+        </div>
+        <form id="lookup-form" class="lookup-form">
+          <label class="sr-only" for="lookup-token">Verification link or token</label>
+          <input id="lookup-token" name="token" type="text" autocomplete="off" spellcheck="false" placeholder="Paste link or token" required>
+          <button class="button button-dark" type="submit">Continue <span aria-hidden="true">&#8594;</span></button>
+          <p id="lookup-error" class="field-message" role="alert" hidden></p>
+        </form>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer wrap"><span>NUSA — AME Zion Chapter</span><span>Identity. Integrity. Verification.</span></footer>
+  <script>
+    document.getElementById('lookup-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const field = document.getElementById('lookup-token');
+      const message = document.getElementById('lookup-error');
+      const value = field.value.trim();
+      let token = value;
+      try {
+        if (value.includes('://')) token = new URL(value).searchParams.get('token') || '';
+      } catch {
+        token = '';
+      }
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
+        message.textContent = 'Enter a valid NUSA verification link or token.';
+        message.hidden = false;
+        return;
+      }
+      window.location.assign(`verify.html?token=${encodeURIComponent(token)}`);
+    });
+  </script>
+</body>
+</html>

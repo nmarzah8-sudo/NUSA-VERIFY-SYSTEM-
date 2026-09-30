@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171714">
+  <meta name="description" content="Secure NUSA Verify administrator sign-in.">
+  <title>Administrator Login | NUSA Verify</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="js/pwa.js"></script>
+</head>
+<body class="auth-page">
+  <header class="site-header wrap">
+    <a class="wordmark" href="./" aria-label="NUSA Verify home"><span class="brand-mark-slot" data-logo-slot aria-hidden="true"></span><span><strong>NUSA Verify</strong><small>AME Zion Chapter</small></span></a>
+    <a class="header-link" href="./">Back to home <span aria-hidden="true">&#8599;</span></a>
+  </header>
+  <main class="auth-layout wrap">
+    <section class="auth-intro">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> ADMINISTRATOR ACCESS</p>
+      <h1>Welcome<br>back.</h1>
+      <p>Sign in to manage NUSA student identity records.</p>
+      <div class="auth-rule"><span></span> PRIVATE ADMINISTRATIVE PORTAL</div>
+    </section>
+    <section class="auth-panel" aria-labelledby="login-title">
+      <div class="panel-index">01 <span>/</span> SIGN IN</div>
+      <h2 id="login-title">Administrator login</h2>
+      <p class="muted">Use your authorized NUSA account.</p>
+      <form id="login-form" class="stack-form">
+        <label for="email">Email address</label>
+        <input id="email" name="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <p id="login-message" class="notice" role="status" aria-live="polite" hidden></p>
+        <button id="login-submit" class="button button-gold button-wide" type="submit">Sign in <span aria-hidden="true">&#8594;</span></button>
+      </form>
+      <p class="auth-footnote">Access is restricted to designated administrators.</p>
+    </section>
+  </main>
+  <footer class="site-footer wrap"><span>NUSA — AME Zion Chapter</span><span>Secure administrator access</span></footer>
+</body>
+</html>

@@ -1,0 +1,1 @@
+Place the official NUSA — AME Zion Chapter emblem at `assets/logo.png` when it is provided. No unofficial emblem is included. The app currently uses its organization name as a text wordmark; `assets/app-icon.svg` is a generic NUSA Verify application icon, not an official chapter seal.

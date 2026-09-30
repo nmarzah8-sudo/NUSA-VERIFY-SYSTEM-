@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171714">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="description" content="NUSA Verify administrator dashboard.">
+  <title>Dashboard | NUSA Verify</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script defer src="js/config.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="js/supabase.js"></script>
+  <script defer src="js/auth.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
+  <script defer src="js/qr.js"></script>
+  <script defer src="js/dashboard.js"></script>
+  <script defer src="js/pwa.js"></script>
+</head>
+<body class="dashboard-page">
+  <div id="access-message" class="access-message" role="status" aria-live="polite">Checking administrator access...</div>
+  <div id="admin-app" hidden>
+    <header class="dash-header">
+      <a class="wordmark" href="./" aria-label="NUSA Verify home"><span class="brand-mark-slot" data-logo-slot aria-hidden="true"></span><span><strong>NUSA Verify</strong><small>NUSA — AME Zion Chapter</small></span></a>
+      <div class="header-tools"><a href="verify.html" class="header-link" target="_blank" rel="noopener">Public verification <span aria-hidden="true">&#8599;</span></a><button class="button button-outline button-small" data-action="logout" type="button">Log out</button></div>
+    </header>
+    <div class="dashboard-frame">
+      <aside class="side-nav" aria-label="Administrator navigation">
+        <p class="nav-caption">WORKSPACE</p>
+        <a class="nav-link is-current" href="#overview">Dashboard</a>
+        <a class="nav-link" href="#student-directory">Students</a>
+        <button class="nav-link nav-button" data-action="add-student" type="button">Add student <span>+</span></button>
+        <a class="nav-link" href="#student-directory">QR verification</a>
+        <p class="nav-caption nav-caption-lower">ACCOUNT</p>
+        <button class="nav-link nav-button" data-action="settings" type="button">Settings</button>
+        <div class="nav-organization"><span class="eyebrow-dot"></span><span>NUSA<br>AME Zion Chapter</span></div>
+      </aside>
+      <main class="dashboard-main">
+        <section id="overview" class="dash-welcome">
+          <div><p class="eyebrow eyebrow-dark">ADMINISTRATOR WORKSPACE</p><h1>Student records</h1><p class="muted">Manage current identities and standing.</p></div>
+          <button class="button button-dark" data-action="add-student" type="button"><span aria-hidden="true">+</span> Add student</button>
+        </section>
+        <div id="dashboard-notice" class="notice" role="status" aria-live="polite" hidden></div>
+        <section class="stat-grid" aria-label="Student statistics">
+          <article class="stat-item stat-total"><span>Total students</span><strong id="stat-total">--</strong><small>On record</small></article>
+          <article class="stat-item"><span>Active</span><strong id="stat-active">--</strong><small class="stat-mark mark-active">Current</small></article>
+          <article class="stat-item"><span>Inactive</span><strong id="stat-inactive">--</strong><small>Not active</small></article>
+          <article class="stat-item"><span>Graduated</span><strong id="stat-graduated">--</strong><small>Completed</small></article>
+          <article class="stat-item"><span>Revoked</span><strong id="stat-revoked">--</strong><small>Access withdrawn</small></article>
+        </section>
+        <section class="directory-section" id="student-directory" aria-labelledby="directory-title">
+          <div class="section-heading"><div><p class="eyebrow eyebrow-dark">DIRECTORY</p><h2 id="directory-title">Students</h2></div><span id="result-count" class="result-count"></span></div>
+          <div class="table-tools">
+            <label class="search-field"><span class="sr-only">Search students</span><span aria-hidden="true">&#9906;</span><input id="student-search" type="search" placeholder="Search name, ID, or major" autocomplete="off"></label>
+            <label class="filter-field"><span class="sr-only">Filter by status</span><select id="status-filter"><option value="">All statuses</option><option>Active</option><option>Inactive</option><option>Graduated</option><option>Revoked</option></select></label>
+          </div>
+          <div class="table-wrap">
+            <table class="student-table">
+              <thead><tr><th scope="col">Student</th><th scope="col">Student ID</th><th scope="col">Major</th><th scope="col">Position</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody id="student-list"><tr><td colspan="6" class="table-state">Loading student records...</td></tr></tbody>
+            </table>
+          </div>
+          <div id="empty-state" class="empty-state" hidden><span class="empty-rule"></span><h3>No students found</h3><p>Adjust the search or add a student record.</p><button class="button button-dark button-small" data-action="add-student" type="button">Add student</button></div>
+        </section>
+        <footer class="dash-footer"><span>NUSA Verify</span><span>Student Identity Verification System</span></footer>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="student-dialog" class="app-dialog">
+    <form id="student-form" method="dialog" class="dialog-form">
+      <div class="dialog-top"><div><p class="eyebrow eyebrow-dark" id="form-eyebrow">NEW RECORD</p><h2 id="student-dialog-title">Add student</h2></div><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close dialog">&#10005;</button></div>
+      <input type="hidden" id="original-student-id">
+      <label for="full-name">Full name</label><input id="full-name" name="full_name" type="text" maxlength="160" autocomplete="name" required>
+      <label for="student-id">Student ID</label><input id="student-id" name="student_id" type="text" maxlength="64" autocomplete="off" required>
+      <label for="major">Major</label><input id="major" name="major" type="text" maxlength="120" required>
+      <label for="position">Current position</label><select id="position" name="position" required><option value="">Select position</option><option>President</option><option>Vice President</option><option>Secretary General</option><option>Treasurer</option><option>Member</option></select>
+      <label for="student-status">Current status</label><select id="student-status" name="status" required><option value="">Select status</option><option>Active</option><option>Inactive</option><option>Graduated</option><option>Revoked</option></select>
+      <p id="form-message" class="notice" role="status" aria-live="polite" hidden></p>
+      <div class="dialog-actions"><button class="button button-quiet" type="button" data-action="close-dialog">Cancel</button><button id="save-student" class="button button-dark" type="submit">Save student</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="record-dialog" class="app-dialog record-dialog">
+    <div class="dialog-top"><div><p class="eyebrow eyebrow-dark">STUDENT RECORD</p><h2 id="record-title">Student</h2></div><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close dialog">&#10005;</button></div>
+    <dl id="record-details" class="record-details"></dl>
+    <div class="dialog-actions"><button class="button button-quiet" type="button" data-action="close-dialog">Close</button><button class="button button-dark" id="record-edit" type="button">Edit record</button></div>
+  </dialog>
+
+  <dialog id="qr-dialog" class="app-dialog qr-dialog">
+    <div class="dialog-top"><div><p class="eyebrow eyebrow-dark">PUBLIC CREDENTIAL</p><h2>QR verification</h2></div><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close dialog">&#10005;</button></div>
+    <div class="qr-content">
+      <div class="qr-student"><strong id="qr-student-name"></strong><span id="qr-student-id"></span></div>
+      <div class="qr-frame"><canvas id="qr-canvas" aria-label="Student verification QR code"></canvas><p id="qr-error" class="notice" role="alert" hidden></p></div>
+      <label for="verification-url">Verification URL</label><input id="verification-url" type="url" readonly>
+      <div class="qr-actions"><button class="button button-dark" type="button" data-action="download-qr">Download QR</button><button class="button button-quiet" type="button" data-action="print-qr">Print</button><button class="button button-quiet" type="button" data-action="copy-link">Copy link</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="settings-dialog" class="app-dialog">
+    <div class="dialog-top"><div><p class="eyebrow eyebrow-dark">ACCOUNT</p><h2>Settings</h2></div><button class="icon-button" type="button" data-action="close-dialog" aria-label="Close dialog">&#10005;</button></div>
+    <p class="muted">Signed in as <strong id="account-email"></strong></p>
+    <p class="settings-note">Administrator access is controlled by the Supabase admin list.</p>
+    <div class="dialog-actions"><button class="button button-quiet" type="button" data-action="close-dialog">Close</button><button class="button button-dark" type="button" data-action="logout">Log out</button></div>
+  </dialog>
+</body>
+</html>

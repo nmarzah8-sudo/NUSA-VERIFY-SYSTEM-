@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "NUSA Verify",
+  "short_name": "NUSA Verify",
+  "description": "Student identity verification for NUSA — AME Zion Chapter.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f4ef",
+  "theme_color": "#171714",
+  "icons": [
+    {
+      "src": "./assets/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

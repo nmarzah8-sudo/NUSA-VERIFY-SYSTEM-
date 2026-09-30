@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#171714"/>
+  <path d="M88 112h12v288H88z" fill="#e5cb83"/>
+  <text x="130" y="272" fill="#fffefa" font-family="Georgia,serif" font-size="104" font-weight="600">NUSA</text>
+  <path d="M132 306h270" stroke="#c9a54e" stroke-width="4"/>
+  <text x="134" y="346" fill="#d3d0c5" font-family="Arial,sans-serif" font-size="25" letter-spacing="2">VERIFY</text>
+</svg>
