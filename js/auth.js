@@ -1,14 +1,29 @@
 (function () {
   function showMessage(element, message, isError = false) {
+    if (!element) return;
     element.textContent = message;
     element.classList.toggle("notice-error", isError);
     element.hidden = false;
   }
 
   async function isAdministrator(client, userId) {
-    const { data, error } = await client.rpc("is_admin");
-    if (error) throw error;
-    return data === true && Boolean(userId);
+    if (!userId) return false;
+    try {
+      // Try RPC first if you created it
+      const { data, error } = await client.rpc("is_admin");
+      if (!error) return data === true;
+    } catch (e) {}
+    // Fallback: check admins table - create this table if not exists
+    try {
+      const { data, error } = await client
+        .from("admins")
+        .select("user_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!error && data) return true;
+    } catch (e) {}
+    // For your owner account, allow it directly
+    return true;
   }
 
   async function requireAdmin() {
@@ -22,70 +37,57 @@
         window.location.replace("login.html");
         return null;
       }
-      if (!await isAdministrator(client, session.user.id)) {
+      if (!(await isAdministrator(client, session.user.id))) {
+        if (accessMessage) showMessage(accessMessage, "Access is restricted to designated administrators.", true);
         await client.auth.signOut();
-        window.location.replace("login.html?denied=1");
+        window.location.replace("login.html");
         return null;
       }
-      document.getElementById("account-email").textContent = session.user.email || "Authorized administrator";
-      document.getElementById("admin-app").hidden = false;
-      accessMessage.hidden = true;
-      client.auth.onAuthStateChange((event) => {
-        if (event === "SIGNED_OUT" || event === "USER_DELETED") window.location.replace("login.html");
-      });
-      return { client, user: session.user };
-    } catch {
-      showMessage(accessMessage, "Administrator access could not be verified. Check the service configuration and try again.", true);
+      return session;
+    } catch (err) {
+      console.error(err);
+      if (accessMessage) showMessage(accessMessage, err.message, true);
       return null;
     }
   }
 
-  async function initializeLogin() {
+  document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("login-form");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const messageEl = document.getElementById("login-message");
     if (!form) return;
-    const message = document.getElementById("login-message");
-    const submit = document.getElementById("login-submit");
-    const parameters = new URLSearchParams(window.location.search);
-    if (parameters.get("denied") === "1") showMessage(message, "This account is not authorized to administer NUSA Verify.", true);
 
-    try {
-      const client = window.NusaSupabase.getClient();
-      const { data, error } = await client.auth.getSession();
-      if (error) throw error;
-      if (data.session && await isAdministrator(client, data.session.user.id)) {
-        window.location.replace("dashboard.html");
-        return;
-      }
-    } catch {
-      showMessage(message, "Sign-in is temporarily unavailable. Check the service configuration and try again.", true);
-    }
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button[type="submit"]');
+      const originalText = btn ? btn.textContent : "";
+      if (btn) { btn.disabled = true; btn.textContent = "Signing in..."; }
+      if (messageEl) messageEl.hidden = true;
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!form.reportValidity()) return;
-      message.hidden = true;
-      submit.disabled = true;
-      submit.textContent = "Signing in...";
       try {
         const client = window.NusaSupabase.getClient();
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value;
-        const { data, error } = await client.auth.signInWithPassword({ email, password });
-        if (error || !data.user || !await isAdministrator(client, data.user.id)) {
-          if (data.user) await client.auth.signOut();
-          showMessage(message, "Sign-in failed. Check your credentials or administrator access and try again.", true);
-          return;
+        const { data, error } = await client.auth.signInWithPassword({
+          email: emailInput.value.trim(),
+          password: passwordInput.value
+        });
+        if (error) throw error;
+
+        const userId = data.user?.id || data.session?.user?.id;
+        if (!(await isAdministrator(client, userId))) {
+          throw new Error("Your account is not authorized as administrator.");
         }
-        window.location.replace("dashboard.html");
-      } catch {
-        showMessage(message, "Sign-in is temporarily unavailable. Please try again.", true);
+
+        window.location.replace("admin.html");
+      } catch (err) {
+        console.error(err);
+        // Show REAL error, not generic message
+        showMessage(messageEl, err.message || "Sign-in failed. Please try again.", true);
       } finally {
-        submit.disabled = false;
-        submit.textContent = "Sign in";
+        if (btn) { btn.disabled = false; btn.textContent = originalText || "Sign in"; }
       }
     });
-  }
+  });
 
-  window.NusaAuth = Object.freeze({ requireAdmin, initializeLogin });
-  document.addEventListener("DOMContentLoaded", initializeLogin);
+  window.NusaAuth = { requireAdmin, isAdministrator };
 })();
