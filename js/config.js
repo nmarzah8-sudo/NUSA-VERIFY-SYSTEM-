@@ -1,10 +1,10 @@
 /* Supabase Dashboard > Project Settings > API: use the Project URL and publishable/anon key. */
 /* Never place a service-role key or Supabase secret key in browser code. */
 window.NUSA_CONFIG = Object.freeze({
-  SUPABASE_URL: "",
-  SUPABASE_ANON_KEY: "",
+SUPABASE_URL‎:  "‎https://zywonapqvzamduhrgxdr.supabase.co",
+SUPABASE_ANON_KEY:  "sb_publishable_ULLUQfFl8PDZ46Gfrn4Xrw_BZP-VvLL",
   /* Optional production URL including the GitHub Pages repository path. Leave blank to derive it on *.github.io. */
-  PUBLIC_BASE_URL: "",
+  PUBLIC_BASE_URL: "https://nmarzah8-sudo.github.io/NUSA-VERIFY-SYSTEM-",
   STATUSES: Object.freeze(["Active", "Inactive", "Graduated", "Revoked"]),
   POSITIONS: Object.freeze(["President", "Vice President", "Secretary General", "Treasurer", "Member"])
 });
