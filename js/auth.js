@@ -4,29 +4,56 @@
 
     element.textContent = message;
     element.classList.toggle("notice-error", isError);
+    element.classList.toggle("notice-success", !isError);
     element.hidden = false;
   }
 
   async function isAdministrator(client) {
-    const { data, error } = await client.rpc("is_admin");
+    if (!client) {
+      throw new Error("Supabase client is unavailable.");
+    }
+
+    const rpcRequest = client.rpc("is_admin");
+
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error("Administrator check timed out after 10 seconds.")
+        );
+      }, 10000);
+    });
+
+    const result = await Promise.race([
+      rpcRequest,
+      timeout
+    ]);
+
+    const { data, error } = result;
 
     if (error) {
       console.error("Administrator RPC error:", error);
-      throw new Error("Administrator access check failed: " + error.message);
+
+      throw new Error(
+        "Administrator access check failed: " + error.message
+      );
     }
 
     return data === true;
   }
 
   async function requireAdmin() {
-    const accessMessage = document.getElementById("access-message");
+    const accessMessage =
+      document.getElementById("access-message");
 
     try {
       const client = window.NusaSupabase.getClient();
 
-      const { data, error } = await client.auth.getSession();
+      const { data, error } =
+        await client.auth.getSession();
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       const session = data.session;
 
@@ -35,7 +62,8 @@
         return null;
       }
 
-      const administrator = await isAdministrator(client);
+      const administrator =
+        await isAdministrator(client);
 
       if (!administrator) {
         if (accessMessage) {
@@ -48,6 +76,7 @@
 
         await client.auth.signOut();
         window.location.replace("login.html");
+
         return null;
       }
 
@@ -57,12 +86,16 @@
       };
 
     } catch (err) {
-      console.error("Administrator authorization error:", err);
+      console.error(
+        "Administrator authorization error:",
+        err
+      );
 
       if (accessMessage) {
         showMessage(
           accessMessage,
-          err.message || "Administrator access could not be verified.",
+          err.message ||
+            "Administrator access could not be verified.",
           true
         );
       }
@@ -71,66 +104,102 @@
     }
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("login-form");
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const messageEl = document.getElementById("login-message");
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+      const form =
+        document.getElementById("login-form");
 
-    if (!form) return;
+      const emailInput =
+        document.getElementById("email");
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
+      const passwordInput =
+        document.getElementById("password");
 
-      const button = form.querySelector('button[type="submit"]');
-      const originalText = button ? button.textContent : "";
+      const messageEl =
+        document.getElementById("login-message");
 
-      if (button) {
-        button.disabled = true;
-        button.textContent = "Signing in...";
-      }
+      if (!form) return;
 
-      if (messageEl) {
-        messageEl.hidden = true;
-      }
+      form.addEventListener(
+        "submit",
+        async (event) => {
+          event.preventDefault();
 
-      try {
-        const client = window.NusaSupabase.getClient();
+          const button =
+            form.querySelector(
+              'button[type="submit"]'
+            );
 
-        const { data, error } = await client.auth.signInWithPassword({
-          email: emailInput.value.trim(),
-          password: passwordInput.value
-        });
+          const originalText =
+            button
+              ? button.textContent
+              : "";
 
-        if (error) throw error;
+          if (button) {
+            button.disabled = true;
+            button.textContent = "Signing in...";
+          }
 
-        const administrator = await isAdministrator(client);
+          if (messageEl) {
+            messageEl.hidden = true;
+          }
 
-        if (!administrator) {
-          throw new Error(
-            "Your account is not authorized as administrator."
-          );
+          try {
+            const client =
+              window.NusaSupabase.getClient();
+
+            const { data, error } =
+              await client.auth.signInWithPassword({
+                email:
+                  emailInput.value.trim(),
+
+                password:
+                  passwordInput.value
+              });
+
+            if (error) {
+              throw error;
+            }
+
+            const administrator =
+              await isAdministrator(client);
+
+            if (!administrator) {
+              throw new Error(
+                "Your account is not authorized as administrator."
+              );
+            }
+
+            window.location.replace(
+              "dashboard.html"
+            );
+
+          } catch (err) {
+            console.error(
+              "Sign-in error:",
+              err
+            );
+
+            showMessage(
+              messageEl,
+              err.message ||
+                "Sign-in failed. Please try again.",
+              true
+            );
+
+          } finally {
+            if (button) {
+              button.disabled = false;
+              button.textContent =
+                originalText ||
+                "Sign in";
+            }
+          }
         }
-
-        window.location.replace("dashboard.html");
-
-      } catch (err) {
-        console.error("Sign-in error:", err);
-
-        showMessage(
-          messageEl,
-          err.message || "Sign-in failed. Please try again.",
-          true
-        );
-
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.textContent = originalText || "Sign in";
-        }
-      }
-    });
-  });
+      );
+    }
+  );
 
   window.NusaAuth = {
     requireAdmin,
