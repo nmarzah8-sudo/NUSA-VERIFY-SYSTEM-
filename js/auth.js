@@ -7,21 +7,15 @@
     element.hidden = false;
   }
 
-  async function isAdministrator(client, userId) {
-    if (!userId) return false;
-
-    const { data, error } = await client
-      .from("admin_users")
-      .select("user_id")
-      .eq("user_id", userId)
-      .maybeSingle();
+  async function isAdministrator(client) {
+    const { data, error } = await client.rpc("is_admin");
 
     if (error) {
-      console.error("Administrator check failed:", error);
-      throw error;
+      console.error("Administrator RPC error:", error);
+      throw new Error("Administrator access check failed: " + error.message);
     }
 
-    return !!data;
+    return data === true;
   }
 
   async function requireAdmin() {
@@ -41,9 +35,7 @@
         return null;
       }
 
-      const userId = session.user?.id;
-
-      const administrator = await isAdministrator(client, userId);
+      const administrator = await isAdministrator(client);
 
       if (!administrator) {
         if (accessMessage) {
@@ -112,14 +104,7 @@
 
         if (error) throw error;
 
-        const userId =
-          data.user?.id ||
-          data.session?.user?.id;
-
-        const administrator = await isAdministrator(
-          client,
-          userId
-        );
+        const administrator = await isAdministrator(client);
 
         if (!administrator) {
           throw new Error(
