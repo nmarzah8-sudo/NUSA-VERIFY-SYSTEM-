@@ -8,37 +8,106 @@
     element.hidden = false;
   }
 
+  function waitWithTimeout(promise, milliseconds, message) {
+    const timeout = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(message));
+      }, milliseconds);
+    });
+
+    return Promise.race([promise, timeout]);
+  }
+
+  async function getSession(client) {
+    if (!client) {
+      throw new Error("Supabase client is unavailable.");
+    }
+
+    console.log("NUSA AUTH: Checking current session...");
+
+    const result = await waitWithTimeout(
+      client.auth.getSession(),
+      10000,
+      "Session check timed out after 10 seconds."
+    );
+
+    if (result.error) {
+      console.error(
+        "NUSA AUTH: Session error:",
+        result.error
+      );
+
+      throw new Error(
+        "Session check failed: " +
+        result.error.message
+      );
+    }
+
+    console.log(
+      "NUSA AUTH: Session check completed.",
+      result.data && result.data.session
+        ? "Session found."
+        : "No session found."
+    );
+
+    return result.data.session;
+  }
+
   async function isAdministrator(client) {
     if (!client) {
       throw new Error("Supabase client is unavailable.");
     }
 
-    const rpcRequest = client.rpc("is_admin");
+    console.log(
+      "NUSA AUTH: Calling public.is_admin()..."
+    );
 
-    const timeout = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(
-          new Error("Administrator check timed out after 10 seconds.")
-        );
-      }, 10000);
-    });
+    const started = Date.now();
 
-    const result = await Promise.race([
-      rpcRequest,
-      timeout
-    ]);
+    const rpcPromise = client.rpc("is_admin");
 
-    const { data, error } = result;
+    const result = await waitWithTimeout(
+      rpcPromise,
+      10000,
+      "Administrator check timed out after 10 seconds."
+    );
 
-    if (error) {
-      console.error("Administrator RPC error:", error);
+    console.log(
+      "NUSA AUTH: is_admin() returned after",
+      Date.now() - started,
+      "ms."
+    );
 
+    console.log(
+      "NUSA AUTH: RPC data:",
+      result.data
+    );
+
+    console.log(
+      "NUSA AUTH: RPC error:",
+      result.error
+    );
+
+    if (result.error) {
       throw new Error(
-        "Administrator access check failed: " + error.message
+        "Administrator access check failed: " +
+        result.error.message
       );
     }
 
-    return data === true;
+    if (result.data === true) {
+      console.log(
+        "NUSA AUTH: Administrator confirmed."
+      );
+
+      return true;
+    }
+
+    console.warn(
+      "NUSA AUTH: User authenticated but is not an administrator."
+    );
+
+    return false;
   }
 
   async function requireAdmin() {
@@ -46,48 +115,119 @@
       document.getElementById("access-message");
 
     try {
-      const client = window.NusaSupabase.getClient();
-
-      const { data, error } =
-        await client.auth.getSession();
-
-      if (error) {
-        throw error;
+      if (accessMessage) {
+        showMessage(
+          accessMessage,
+          "Checking your administrator session...",
+          false
+        );
       }
 
-      const session = data.session;
+      console.log(
+        "NUSA AUTH: Starting administrator authorization..."
+      );
+
+      if (
+        !window.NusaSupabase ||
+        typeof window.NusaSupabase.getClient !== "function"
+      ) {
+        throw new Error(
+          "Supabase client is not available."
+        );
+      }
+
+      const client =
+        window.NusaSupabase.getClient();
+
+      if (accessMessage) {
+        showMessage(
+          accessMessage,
+          "Checking your login session...",
+          false
+        );
+      }
+
+      const session =
+        await getSession(client);
 
       if (!session) {
+        console.warn(
+          "NUSA AUTH: No active session. Redirecting to login."
+        );
+
         window.location.replace("login.html");
         return null;
+      }
+
+      console.log(
+        "NUSA AUTH: Authenticated user:",
+        session.user.email
+      );
+
+      if (accessMessage) {
+        showMessage(
+          accessMessage,
+          "Checking administrator access...",
+          false
+        );
       }
 
       const administrator =
         await isAdministrator(client);
 
       if (!administrator) {
+        console.warn(
+          "NUSA AUTH: Administrator authorization denied."
+        );
+
         if (accessMessage) {
           showMessage(
             accessMessage,
-            "Access is restricted to designated administrators.",
+            "Your account is not authorized as a NUSA administrator.",
             true
           );
         }
 
-        await client.auth.signOut();
-        window.location.replace("login.html");
+        try {
+          await waitWithTimeout(
+            client.auth.signOut(),
+            5000,
+            "Sign-out timed out."
+          );
+        } catch (signOutError) {
+          console.warn(
+            "NUSA AUTH: Sign-out warning:",
+            signOutError
+          );
+        }
+
+        setTimeout(() => {
+          window.location.replace("login.html");
+        }, 1500);
 
         return null;
       }
 
+      console.log(
+        "NUSA AUTH: Administrator authorization successful."
+      );
+
+      if (accessMessage) {
+        showMessage(
+          accessMessage,
+          "Administrator access confirmed.",
+          false
+        );
+      }
+
       return {
-        session,
-        client
+        session: session,
+        client: client
       };
 
     } catch (err) {
       console.error(
-        "Administrator authorization error:",
+        "NUSA AUTH: Administrator authorization error:",
         err
       );
 
@@ -119,7 +259,9 @@
       const messageEl =
         document.getElementById("login-message");
 
-      if (!form) return;
+      if (!form) {
+        return;
+      }
 
       form.addEventListener(
         "submit",
@@ -149,18 +291,41 @@
             const client =
               window.NusaSupabase.getClient();
 
-            const { data, error } =
-              await client.auth.signInWithPassword({
-                email:
-                  emailInput.value.trim(),
+            console.log(
+              "NUSA AUTH: Starting sign-in..."
+            );
 
-                password:
-                  passwordInput.value
-              });
+            const signInResult =
+              await waitWithTimeout(
+                client.auth.signInWithPassword({
+                  email:
+                    emailInput.value.trim(),
+
+                  password:
+                    passwordInput.value
+                }),
+                10000,
+                "Sign-in request timed out after 10 seconds."
+              );
+
+            const {
+              data,
+              error
+            } = signInResult;
 
             if (error) {
               throw error;
             }
+
+            if (!data || !data.session) {
+              throw new Error(
+                "Sign-in completed but no active session was returned."
+              );
+            }
+
+            console.log(
+              "NUSA AUTH: Sign-in successful."
+            );
 
             const administrator =
               await isAdministrator(client);
@@ -171,13 +336,17 @@
               );
             }
 
+            console.log(
+              "NUSA AUTH: Redirecting to dashboard..."
+            );
+
             window.location.replace(
               "dashboard.html"
             );
 
           } catch (err) {
             console.error(
-              "Sign-in error:",
+              "NUSA AUTH: Sign-in error:",
               err
             );
 
@@ -202,7 +371,7 @@
   );
 
   window.NusaAuth = {
-    requireAdmin,
-    isAdministrator
+    requireAdmin: requireAdmin,
+    isAdministrator: isAdministrator
   };
 })();
