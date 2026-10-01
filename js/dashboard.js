@@ -11,6 +11,7 @@
 
   let client = null;
   let records = [];
+  let initialized = false;
 
   const byId = (id) => document.getElementById(id);
 
@@ -36,11 +37,44 @@
     if (!element) return;
 
     element.textContent = "";
+
     element.classList.remove(
       "notice-error",
       "notice-success"
     );
+
     element.hidden = true;
+  }
+
+  function getConfig() {
+    return window.NUSA_CONFIG || {};
+  }
+
+  function getStatuses() {
+    const config = getConfig();
+
+    return Array.isArray(config.STATUSES)
+      ? config.STATUSES
+      : [
+          "Active",
+          "Inactive",
+          "Graduated",
+          "Revoked"
+        ];
+  }
+
+  function getPositions() {
+    const config = getConfig();
+
+    return Array.isArray(config.POSITIONS)
+      ? config.POSITIONS
+      : [
+          "President",
+          "Vice President",
+          "Secretary General",
+          "Treasurer",
+          "Member"
+        ];
   }
 
   function addCell(
@@ -49,7 +83,8 @@
     value,
     className = ""
   ) {
-    const cell = document.createElement("td");
+    const cell =
+      document.createElement("td");
 
     cell.dataset.label = label;
 
@@ -98,12 +133,6 @@
   }
 
   function updateStatistics() {
-    const statuses =
-      window.NUSA_CONFIG &&
-      Array.isArray(window.NUSA_CONFIG.STATUSES)
-        ? window.NUSA_CONFIG.STATUSES
-        : [];
-
     const total =
       byId("stat-total");
 
@@ -112,39 +141,46 @@
         String(records.length);
     }
 
-    for (const status of statuses) {
+    for (const status of getStatuses()) {
       const element =
-        byId(`stat-${status.toLowerCase()}`);
+        byId(
+          `stat-${String(status).toLowerCase()}`
+        );
 
-      if (element) {
-        element.textContent =
-          String(
-            records.filter(
-              (record) =>
-                record.status === status
-            ).length
-          );
-      }
+      if (!element) continue;
+
+      element.textContent =
+        String(
+          records.filter(
+            (record) =>
+              record.status === status
+          ).length
+        );
     }
   }
 
   function renderRecords() {
+    const body =
+      byId("student-list");
+
+    if (!body) {
+      console.warn(
+        "NUSA DASHBOARD: student-list element is missing."
+      );
+      return;
+    }
+
     const searchInput =
       byId("student-search");
 
     const statusFilter =
       byId("status-filter");
 
-    const body =
-      byId("student-list");
-
     const resultCount =
       byId("result-count");
 
     const emptyState =
       byId("empty-state");
-
-    if (!body) return;
 
     const search =
       searchInput
@@ -153,14 +189,14 @@
             .toLocaleLowerCase()
         : "";
 
-    const status =
+    const selectedStatus =
       statusFilter
         ? statusFilter.value
         : "";
 
     const filtered =
       records.filter((record) => {
-        const values = [
+        const searchableValues = [
           record.full_name,
           record.student_id,
           record.major,
@@ -172,13 +208,14 @@
 
         const matchesSearch =
           !search ||
-          values.some((value) =>
-            value.includes(search)
+          searchableValues.some(
+            (value) =>
+              value.includes(search)
           );
 
         const matchesStatus =
-          !status ||
-          record.status === status;
+          !selectedStatus ||
+          record.status === selectedStatus;
 
         return (
           matchesSearch &&
@@ -202,6 +239,9 @@
       return;
     }
 
+    const statuses =
+      getStatuses();
+
     for (const record of filtered) {
       const row =
         document.createElement("tr");
@@ -220,7 +260,7 @@
         "student-name";
 
       name.textContent =
-        record.full_name;
+        record.full_name || "";
 
       nameCell.append(name);
 
@@ -252,24 +292,17 @@
       const badge =
         document.createElement("span");
 
-      const statuses =
-        window.NUSA_CONFIG &&
-        Array.isArray(
-          window.NUSA_CONFIG.STATUSES
-        )
-          ? window.NUSA_CONFIG.STATUSES
-          : [];
-
       const safeStatus =
         statuses.includes(record.status)
-          ? record.status.toLowerCase()
+          ? String(record.status)
+              .toLowerCase()
           : "revoked";
 
       badge.className =
         `status-badge status-${safeStatus}`;
 
       badge.textContent =
-        record.status;
+        record.status || "";
 
       statusCell.append(badge);
 
@@ -293,38 +326,32 @@
           "view",
           record
         ),
-
         makeAction(
           "Edit",
           "edit",
           record
         ),
-
         makeAction(
           "QR",
           "qr",
           record
         ),
-
         makeAction(
           "Copy link",
           "copy-link-row",
           record
         ),
-
         makeAction(
           "Print",
           "print-row",
           record
         ),
-
         makeAction(
           "Revoke",
           "revoke",
           record,
           true
         ),
-
         makeAction(
           "Delete",
           "delete",
@@ -446,7 +473,7 @@
     }
 
     for (const field of fields) {
-      const id =
+      const inputId =
         field === "status"
           ? "student-status"
           : field.replaceAll(
@@ -455,14 +482,14 @@
             );
 
       const input =
-        byId(id);
+        byId(inputId);
 
-      if (input) {
-        input.value =
-          record
-            ? record[field] || ""
-            : "";
-      }
+      if (!input) continue;
+
+      input.value =
+        record
+          ? record[field] || ""
+          : "";
     }
 
     const dialog =
@@ -474,16 +501,32 @@
       );
     }
 
-    dialog.showModal();
+    if (
+      typeof dialog.showModal ===
+      "function"
+    ) {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute(
+        "open",
+        ""
+      );
+    }
   }
 
   function openRecord(record) {
+    if (!record) {
+      throw new Error(
+        "Student record is unavailable."
+      );
+    }
+
     const title =
       byId("record-title");
 
     if (title) {
       title.textContent =
-        record.full_name;
+        record.full_name || "";
     }
 
     const details =
@@ -519,7 +562,7 @@
         labels[field];
 
       value.textContent =
-        record[field];
+        record[field] || "";
 
       group.append(
         term,
@@ -550,25 +593,551 @@
 
     if (!dialog) {
       throw new Error(
-        "Record dialog is missing."
+        "Record dialog is missing from the page."
       );
     }
 
-    dialog.showModal();
+    if (
+      typeof dialog.showModal ===
+      "function"
+    ) {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute(
+        "open",
+        ""
+      );
+    }
   }
 
   function getRecord(studentId) {
+    if (!studentId) {
+      return null;
+    }
+
     return records.find(
       (record) =>
-        record.student_id === studentId
-    );
+        record.student_id ===
+        studentId
+    ) || null;
   }
 
   async function showQr(record) {
+    if (!record) {
+      throw new Error(
+        "Student record is unavailable."
+      );
+    }
+
     const dialog =
       byId("qr-dialog");
 
     const error =
+      byId("qr-error");
+
+    const canvas =
+      byId("qr-canvas");
+
+    if (!dialog || !canvas) {
+      throw new Error(
+        "QR dialog is not available."
+      );
+    }
+
+    if (error) {
+      clearNotice(error);
+    }
+
+    const nameElement =
+      byId("qr-student-name");
+
+    if (nameElement) {
+      nameElement.textContent =
+        record.full_name || "";
+    }
+
+    const idElement =
+      byId("qr-student-id");
+
+    if (idElement) {
+      idElement.textContent =
+        record.student_id || "";
+    }
+
+    const urlInput =
+      byId("verification-url");
+
+    if (urlInput) {
+      urlInput.value = "";
+    }
+
+    const context =
+      canvas.getContext("2d");
+
+    if (context) {
+      context.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+    }
+
+    dialog.dataset.studentId =
+      record.student_id;
+
+    if (
+      typeof dialog.showModal ===
+      "function"
+    ) {
+      dialog.showModal();
+    } else {
+      dialog.setAttribute(
+        "open",
+        ""
+      );
+    }
+
+    try {
+      if (
+        !window.NusaConfig ||
+        typeof window.NusaConfig
+          .verificationUrl !==
+          "function"
+      ) {
+        throw new Error(
+          "Verification URL configuration is unavailable."
+        );
+      }
+
+      if (
+        !window.NusaQr ||
+        typeof window.NusaQr.render !==
+          "function"
+      ) {
+        throw new Error(
+          "QR generator is unavailable."
+        );
+      }
+
+      const url =
+        window.NusaConfig
+          .verificationUrl(
+            record.verification_token
+          );
+
+      await window.NusaQr.render(
+        canvas,
+        url
+      );
+
+      if (urlInput) {
+        urlInput.value = url;
+      }
+
+    } catch (cause) {
+      console.error(
+        "NUSA DASHBOARD: QR error:",
+        cause
+      );
+
+      if (error) {
+        setNotice(
+          error,
+          cause.message ||
+            "QR generation failed. Please try again.",
+          "error"
+        );
+      }
+    }
+  }
+
+  async function copyLink(
+    record,
+    feedback = true
+  ) {
+    if (!record) {
+      throw new Error(
+        "Student record is no longer available."
+      );
+    }
+
+    if (
+      !window.NusaConfig ||
+      typeof window.NusaConfig
+        .verificationUrl !==
+        "function"
+    ) {
+      throw new Error(
+        "Verification URL configuration is unavailable."
+      );
+    }
+
+    const url =
+      window.NusaConfig
+        .verificationUrl(
+          record.verification_token
+        );
+
+    if (
+      navigator.clipboard &&
+      window.isSecureContext
+    ) {
+      await navigator.clipboard.writeText(
+        url
+      );
+    } else {
+      const temporary =
+        document.createElement(
+          "textarea"
+        );
+
+      temporary.value = url;
+
+      temporary.setAttribute(
+        "readonly",
+        ""
+      );
+
+      temporary.style.position =
+        "fixed";
+
+      temporary.style.left =
+        "-9999px";
+
+      document.body.append(
+        temporary
+      );
+
+      temporary.select();
+
+      const copied =
+        document.execCommand(
+          "copy"
+        );
+
+      temporary.remove();
+
+      if (!copied) {
+        throw new Error(
+          "Copy is unavailable in this browser."
+        );
+      }
+    }
+
+    if (feedback) {
+      setNotice(
+        byId("dashboard-notice"),
+        "Verification link copied.",
+        "success"
+      );
+    }
+
+    return url;
+  }
+
+  async function downloadQr() {
+    const dialog =
+      byId("qr-dialog");
+
+    if (!dialog) {
+      throw new Error(
+        "QR dialog is unavailable."
+      );
+    }
+
+    const record =
+      getRecord(
+        dialog.dataset.studentId
+      );
+
+    if (!record) {
+      throw new Error(
+        "Student record is no longer available."
+      );
+    }
+
+    if (
+      !window.NusaConfig ||
+      typeof window.NusaConfig
+        .verificationUrl !==
+        "function"
+    ) {
+      throw new Error(
+        "Verification URL configuration is unavailable."
+      );
+    }
+
+    if (
+      !window.NusaQr ||
+      typeof window.NusaQr.dataUrl !==
+        "function"
+    ) {
+      throw new Error(
+        "QR generator is unavailable."
+      );
+    }
+
+    const url =
+      window.NusaConfig
+        .verificationUrl(
+          record.verification_token
+        );
+
+    const image =
+      await window.NusaQr.dataUrl(
+        url
+      );
+
+    const link =
+      document.createElement("a");
+
+    link.href = image;
+
+    link.download =
+      `NUSA-${record.student_id}-QR.png`;
+
+    document.body.append(link);
+
+    link.click();
+
+    link.remove();
+  }
+
+  async function saveStudent(event) {
+    event.preventDefault();
+
+    if (!client) {
+      setNotice(
+        byId("form-message"),
+        "Supabase client is unavailable.",
+        "error"
+      );
+      return;
+    }
+
+    const form =
+      byId("student-form");
+
+    if (
+      !form ||
+      !form.reportValidity()
+    ) {
+      return;
+    }
+
+    const record =
+      Object.fromEntries(
+        fields.map((field) => {
+          const inputId =
+            field === "status"
+              ? "student-status"
+              : field.replaceAll(
+                  "_",
+                  "-"
+                );
+
+          const input =
+            byId(inputId);
+
+          return [
+            field,
+            input
+              ? input.value.trim()
+              : ""
+          ];
+        })
+      );
+
+    const statuses =
+      getStatuses();
+
+    const positions =
+      getPositions();
+
+    if (
+      fields.some(
+        (field) =>
+          !record[field]
+      )
+    ) {
+      setNotice(
+        byId("form-message"),
+        "Complete every field before saving.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (
+      !statuses.includes(
+        record.status
+      )
+    ) {
+      setNotice(
+        byId("form-message"),
+        "Please select a valid student status.",
+        "error"
+      );
+
+      return;
+    }
+
+    if (
+      !positions.includes(
+        record.position
+      )
+    ) {
+      setNotice(
+        byId("form-message"),
+        "Please select a valid student position.",
+        "error"
+      );
+
+      return;
+    }
+
+    const saveButton =
+      byId("save-student");
+
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.textContent =
+        "Saving...";
+    }
+
+    clearNotice(
+      byId("form-message")
+    );
+
+    try {
+      const originalInput =
+        byId(
+          "original-student-id"
+        );
+
+      const originalId =
+        originalInput
+          ? originalInput.value.trim()
+          : "";
+
+      let response;
+
+      if (originalId) {
+        response =
+          await client
+            .from("students")
+            .update(record)
+            .eq(
+              "student_id",
+              originalId
+            )
+            .select("student_id")
+            .single();
+      } else {
+        response =
+          await client
+            .from("students")
+            .insert(record)
+            .select("student_id")
+            .single();
+      }
+
+      if (response.error) {
+        if (
+          response.error.code ===
+          "23505"
+        ) {
+          throw new Error(
+            "That Student ID is already in use."
+          );
+        }
+
+        throw new Error(
+          response.error.message ||
+            "The student record could not be saved."
+        );
+      }
+
+      const dialog =
+        byId("student-dialog");
+
+      if (dialog) {
+        dialog.close();
+      }
+
+      setNotice(
+        byId("dashboard-notice"),
+        originalId
+          ? "Student record updated successfully."
+          : "Student added successfully.",
+        "success"
+      );
+
+      await loadRecords();
+
+    } catch (cause) {
+      console.error(
+        "NUSA DASHBOARD: Save error:",
+        cause
+      );
+
+      setNotice(
+        byId("form-message"),
+        cause.message ||
+          "The student record could not be saved. Please try again.",
+        "error"
+      );
+
+    } finally {
+      if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.textContent =
+          "Save student";
+      }
+    }
+  }
+
+  async function updateStatus(
+    record,
+    status
+  ) {
+    if (!client) {
+      throw new Error(
+        "Supabase client is unavailable."
+      );
+    }
+
+    if (!record) {
+      throw new Error(
+        "Student record is unavailable."
+      );
+    }
+
+    if (!getStatuses().includes(status)) {
+      throw new Error(
+        "Invalid student status."
+      );
+    }
+
+    const { error } =
+      await client
+        .from("students")
+        .update({ status })
+        .eq(
+          "student_id",
+          record.student_id
+        );
+
+    if (error) {
+      throw new Error(
+        error.message ||
+          "The student status could not be updated."
+      );
+    }
+
+    await loadRecords(r =
       byId("qr-error");
 
     const canvas =
